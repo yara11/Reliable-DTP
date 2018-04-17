@@ -1,5 +1,6 @@
 # Reliable-DTP
-Computer Networks (CC451) project 1
+Implementing TCP-like data transport protocol using UDP.
+Computer Networks (CC451) project 1.
 
 
 ### TODO
