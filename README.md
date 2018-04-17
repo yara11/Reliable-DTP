@@ -12,6 +12,7 @@ Computer Networks (CC451) project 1
 - [ ] Packet header
 - [ ] Handle timeout
 - [ ] Server handles multiple client connections
+- [ ] Checksum
 
 #### Lost and Corrupt Packets Simulation
 - [ ] Lost packets
@@ -26,3 +27,6 @@ Computer Networks (CC451) project 1
 
 Comparison of algorithms with PLP 1%, 5%, 10%, 30%, report average of at least 5 consecutive runs
 
+#### Bonus
+- [ ] Packet-sniffing with wireshark
+- [ ] Checksum
