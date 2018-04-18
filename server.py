@@ -3,47 +3,49 @@ import os
 import time
 import struct
 from socket import *
+from multiprocessing import Process, Manager
 
 BUFFSIZE = 512
 TIMEOUT = 5 # in seconds
-
-client_table = {}
 
 # Creates a server-side socket that listens for client requests,
 # and handles each in a child process with the given rdtp_fn
 def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 	server_socket = socket(AF_INET, SOCK_DGRAM)
-	server_socket.bind((gethostbyname(gethostname()), server_portno))
+	server_socket.bind(('127.0.1.1', server_portno))
 
-	print('started server ', gethostbyname(gethostname()), ' on port ', server_portno)
+	client_table = Manager().dict()
+
+	print('started server ', gethostbyname(gethostname()), ' on port ', server_portno, '\n')
 
 	while True:
 		request_msg, client_address = server_socket.recvfrom(BUFFSIZE)
 		
 		request_msg = Packet.unpack(request_msg)
 
+		# print('received', request_msg.print(), ' from ', client_address)
+		# print('in parent  ', client_table)
 		if request_msg.is_corrupted():
 			continue
-		if client_address in client_table:
-			if request_msg.is_ACK():
-				# update client table
-				client_table = request_msg.seqno
-			# else: not my bitch
+		#if client_address in client_table:
+		if request_msg.is_ACK():
+			# update client table
+			client_table[client_address] = request_msg.seqno
+			print('received ack ', request_msg.seqno, ' from ', client_address)
+		# else: not mine
+
 		else:
 			file_name = request_msg.data
-			new_pid = os.fork()
+			print('received request ', file_name, ' from ', client_address)
 			client_table[client_address] = None
+			child = Process(target=rdtp_fn, args=(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table))
+			child.start()
 
-			if new_pid == 0:
-				rdtp_fn(server_socket, window_size, seedvalue, plp, file_name, client_address)
-				del client_table[client_address]
-				# kill this process
-				os.kill(os.getpid(), SIGKILL)
 	server_socket.close()
 
 
 
-def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_address):
+def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
 	
 	packets = make_packets(file_name, [0, 1]) # stop and wait only needs 2 seq nos
 	print('starting stop-and-wait...')
@@ -63,6 +65,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 			# if timeout, resend, restart timer
 			if time.time() >= future:
 				server_socket.sendto(sndpkt.pack(), client_address)
+				# print('in child ', client_table)
 				print('packet ', sndpkt.seqno, ' resent to ', client_address)
 				now = time.time()
 				future = now + TIMEOUT
@@ -72,6 +75,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 			if client_table[client_address] == sndpkt.seqno:
 				print('packet ', sndpkt.seqno, ' received by ', client_address)
 				break
+	del client_table[client_address]
 		
 
 # reads file and returns list of (encoded) datagram packets
@@ -89,12 +93,12 @@ def dummy_make_packets(seq_nos):
 	
 	while stt_ind < str_len:
 		data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
-		packet = Packet(seqno, len(data)+8, 0, data)
+		packet = Packet(seqno, len(data)+8, 0, False, False, data)
 		if stt_ind+data_size >= str_len:
 			packet.islast = True
 		packets.append(packet)
-		packet.print()
-		Packet.unpack(packet.pack()).print()
+		# packet.print()
+		# Packet.unpack(packet.pack()).print()
 		stt_ind += data_size
 		seqno = (seqno+1)%2
 
@@ -102,4 +106,4 @@ def dummy_make_packets(seq_nos):
 
 
 #dummy_make_packets([0, 1])
-server_listener(0, 0, 0, 0, stop_and_wait)
+server_listener(1028, 0, 0, 0, stop_and_wait)

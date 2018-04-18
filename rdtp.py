@@ -1,17 +1,18 @@
 import struct
 from pprint import pprint
 
-# Packet(seqno, 8, cksum, Packet.ACKSTR) returns ACK packet
+# Packet(seqno, 8, cksum, True) returns ACK packet
 class Packet:
-	MSGFORMAT = '!LHH500s'
+	MSGFORMAT = '!LHHBB500s'
 	ACKSTR = 'ACK'
 
-	def __init__(self, seqno, pktlen, cksum, data):
+	def __init__(self, seqno, pktlen, cksum, isACK=False, islast=False, data=''):
 		self.seqno = seqno
 		self.pktlen = pktlen
 		self.cksum = cksum
 		self.data = data[0:pktlen-8]
-		self.islast = False
+		self.islast = islast
+		self.isACK = isACK
 
 	# TODO
 	def calc_checksum(self):
@@ -41,15 +42,15 @@ class Packet:
 		return self.cksum != self.calc_checksum()
 
 	def is_ACK(self):
-		return self.data == ACKSTR
+		return self.isACK
 
 	def pack(self):
-		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, self.data.encode())
+		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, self.isACK, self.islast, self.data.encode())
 	
 	@staticmethod
 	def unpack(pkt):
 		unpacked_pkt = struct.unpack(Packet.MSGFORMAT, pkt)
-		return Packet(unpacked_pkt[0], unpacked_pkt[1], unpacked_pkt[2], unpacked_pkt[3].decode())
+		return Packet(unpacked_pkt[0], unpacked_pkt[1], unpacked_pkt[2], unpacked_pkt[3], unpacked_pkt[4], unpacked_pkt[5].decode())
 
 	def print(self):
 		pprint(vars(self))
