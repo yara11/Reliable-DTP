@@ -6,7 +6,7 @@ Computer Networks (CC451) project 1.
 ### TODO
 
 #### Algorithms
-- [ ] Stop-and-Wait
+- [x] Stop-and-Wait
 - [ ] Selective Repeat
 - [ ] GoBackN
 #### 

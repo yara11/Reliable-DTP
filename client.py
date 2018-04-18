@@ -45,9 +45,9 @@ def stop_and_wait(server_ip, server_portno, client_portno, file_name, window_siz
 	print(rcv_data)
 	client_socket.close()
 
-# client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
-x = Process(target=client_init, args=('127.0.1.1', 1028, 1025, '', 0, stop_and_wait))
-y = Process(target=client_init, args=('127.0.1.1', 1028, 1026, '', 0, stop_and_wait))
+client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
+# x = Process(target=client_init, args=('127.0.1.1', 1028, 1025, '', 0, stop_and_wait))
+# y = Process(target=client_init, args=('127.0.1.1', 1028, 1026, '', 0, stop_and_wait))
 
-x.start()
-y.start()
+# x.start()
+# y.start()
