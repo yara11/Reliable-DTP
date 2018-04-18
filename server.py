@@ -7,6 +7,8 @@ from socket import *
 BUFFSIZE = 512
 TIMEOUT = 20 # in seconds
 
+client_table = {}
+
 # Creates a server-side socket that listens for client requests,
 # and handles each in a child process with the given rdtp_fn
 def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
@@ -15,26 +17,33 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 	while True:
 		request_msg, client_address = server_socket.recvfrom(BUFFSIZE)
 		
-		# if address exists
+		request_msg = Packet.unpack(request_msg)
 
-		# TODO: if this is a request message and not an ACK
-		# get filename from message
-		rcvpkt = Packet.unpack(request_msg)
-		file_name = rcvpkt.data
+		if request_msg.is_corrupted():
+			continue
+		if client_address in client_table:
+			if request_msg.is_ACK():
+				# update client table
+				print('hi')
+			# else: not my bitch
+		else:
+			file_name = request_msg.data
+			new_pid = os.fork()
+			client_table[client_address] = None
 
-		new_pid = os.fork()
-		if new_pid == 0:
-			rdtp_fn(server_portno, window_size, seedvalue, plp, file_name, client_address)
+			if new_pid == 0:
+				rdtp_fn(server_socket, window_size, seedvalue, plp, file_name, client_address)
+				del client_table[client_address]
+				# todo : kill this process
 
 
-def stop_and_wait(server_portno, window_size, seedvalue, plp, file_name, tgt_client_address):
-	server_socket = socket(AF_INET, SOCK_DGRAM)
-	server_socket.bind('', server_portno)
+
+def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_address):
 	packets = make_packets(file_name, [0, 1]) # stop and wait only needs 2 seq nos
-	seqno = 0
+	
 	for sndpkt in packets:
 		# send packet
-		server_socket.sendto(sndpkt, tgt_client_address)
+		server_socket.sendto(sndpkt.pack(), client_address)
 		
 		# start timer
 		now = time.time()
@@ -42,20 +51,16 @@ def stop_and_wait(server_portno, window_size, seedvalue, plp, file_name, tgt_cli
 		
 		while True:
 			# if timeout, resend, restart timer
-			if time.time() == future:
-				server_socket.sendto(sndpkt, tgt_client_address)
+			if time.time() >= future:
+				server_socket.sendto(sndpkt.pack(), client_address)
 				now = time.time()
 				future = now + TIMEOUT
 				continue
 			
-			rcvpkt, client_address = server_socket.recvfrom(BUFFSIZE)
-			
-			#if this packet belongs to this guy
-			#if client_address == tgt_client_address:
-				# isAck and has same seq no. && not corrupt, done
-			# 	break
-		seqno = (seqno+1)%2
-
+			# if ACK received for this client, with this seq no
+			if client_table[client_address] == sndpkt.seqno:
+				break
+		
 
 # reads file and returns list of (encoded) datagram packets
 def make_packets(file_name, seq_nos):
