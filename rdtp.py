@@ -12,8 +12,26 @@ class Packet:
 		self.data = data[0:pktlen-8]
 
 	# TODO
-	def calc_checksum(self):
+	def calc_checksum(self,data):
 		self.cksum = 0
+		d_lenght = len(data)
+		pointer =0
+		while d_lenght > 1:
+			# 16 bit number for the checksum
+			# getting the ascki code for each character using ord() function
+			self.cksum +=(ord(data[pointer])+ord(data[pointer+1]))
+			d_lenght -= 2
+			pointer +=2
+		if d_lenght:
+			self.cksum += ord(data[pointer])
+		#overflow
+		self.cksum = (self.cksum >> 16) + (self.cksum &0xffff)
+		# one's complement
+		result = (~self.cksum) & 0xffff
+		result += (self.cksum)
+		return result
+
+
 
 	def pack(self):
 		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, self.data.encode())
