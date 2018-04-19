@@ -13,7 +13,8 @@ TIMEOUT = 5 # in seconds
 # and handles each in a child process with the given rdtp_fn
 def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 	server_socket = socket(AF_INET, SOCK_DGRAM)
-	server_socket.bind(('192.168.147.1', server_portno))
+	#server_socket.bind(('192.168.147.1', server_portno))
+	server_socket.bind((gethostbyname(gethostname()), server_portno))
 
 	client_table = Manager().dict()
 
@@ -80,7 +81,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
 #GO BACK N ALGORITHM
 def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
-	packet_timer = timer()
+	packet_timer = timer(TIMEOUT)
 	base=1
 	next_seq_num=1
 	sequencenumbers = 2 * window_size
@@ -111,7 +112,9 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 			else:
 				packet_timer.start_time()
 
-	del client_table[client_address]
+
+
+
 
 # reads file and returns list of (encoded) datagram packets
 def make_packets(file_name, seq_nos):
@@ -141,5 +144,7 @@ def dummy_make_packets(seq_nos):
 
 
 #dummy_make_packets([0, 1])
+
 print(gethostbyname(gethostname()))
+
 server_listener(2050, 0, 0, 0, stop_and_wait)

@@ -1,7 +1,7 @@
 import time
 
-class timer:
-    TIME_OUT = 5
+class timer(object):
+
     TIMER_STOP = 0
 
     #initializing
