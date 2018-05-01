@@ -113,7 +113,45 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 				packet_timer.timer_timeout()
 			else:
 				packet_timer.start_timer()
-				
+	del client_table[client_address]
+
+
+# Selective Repeat Algorithm
+def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+	#to creat a timer for each packet
+	packet_timer = [timer(TIMEOUT) for i in range(BUFFSIZE)]
+	#make packets with the buffer size
+	packets = make_packets(file_name, list(range(1, BUFFSIZE)))
+	base = 1
+	next_seq_num = 1
+	while base < len (packets):
+		# if there is a space in window send packets and start its timer
+		if next_seq_num < base + window_size:
+			server_socket.sendto(packets[next_seq_num].pack(), client_address)
+			packet_timer[next_seq_num].start_timer()
+			next_seq_num+=1
+		#check if any packet ack recived within the window
+		if  (packets[base].seqno <= client_table[client_address]) and (client_table[client_address]< packets[next_seq_num].seqno) :
+			# if the base recieved an ack and it is not already acked
+			if (client_table[client_address] == packets[base].seqno) and not (packets[base].is_ACK()):
+				print('packet ', packets[base].seqno, ' received by ', client_address)
+				base = client_table[client_address] + 1
+			# if base packet is already acked then increament base
+			elif packets[base].is_ACK():
+				base = +1
+			# if it is any other packet print it and mark it as acked
+			else :
+				# ask yara about this -> packets[client_table[client_address]].seqno i think something wrong or not
+				#client_table[client_address] and seq # are the same here ??
+				print('packet ', packets[client_table[client_address]].seqno, ' received by ', client_address)
+				#if ACk recieved for a packet between base and next_seq_num mark it as acked
+				if not (packets[client_table[client_address]].is_ACK()):
+					packets[client_table[client_address]].isACK = True
+		#loop from base to next sequance number and check if any packet timed out ask yara about this 'is it logical ?'
+
+
+	del client_table[client_address]
+
 
 
 # reads file and returns list of (encoded) datagram packets
