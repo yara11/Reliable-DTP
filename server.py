@@ -126,6 +126,7 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 	packets = make_packets(file_name, list(range(1, BUFFSIZE)))
 	base = 1
 	next_seq_num = 1
+
 	while base < len (packets):
 		# if there is a space in window send packets and start its timer
 		if next_seq_num < base + window_size:
@@ -153,7 +154,10 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 		# is it nragative one
 		for i in range(base,next_seq_num-1):
 			# if time out of any packet resend this packet
-			if packet_timer[base].timer_timeout and not (packets[client_table[client_address]].is_ACK()):
+			print("i value ------>%d",i)
+			#if (packet_timer[i].timer_timeout) and not (packets[client_table[client_address]].is_ACK()):
+			if (packet_timer[i].timer_timeout):
+				print("---------------->i am here and i am not supposed to be here")
 				server_socket.sendto(packets[i].pack(), client_address)
 				packet_timer[i].start_timer()
 

@@ -88,31 +88,34 @@ def selective_repeat (server_ip, server_portno, client_portno, file_name, window
 		rcvpkt, server_address = client_socket.recvfrom(BUFFSIZE)
 		rcvpkt = Packet.unpack(rcvpkt)
 
-		#packet is nor corrupted and between base and base+windowsize-1
+		#packet is not corrupted and between base and base+windowsize-1
 		if not rcvpkt.is_corrupted() and rcv_base <= rcvpkt.seqno and rcvpkt.seqno <= (rcv_base+window_size-1) :
 			#print and send ACK
-			print('received packet ', seqno, ' from ', (server_ip, server_portno))
+			print('received packet ', rcvpkt.seqno, ' from ', (server_ip, server_portno))
 			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)  # send ACK
 			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
 			print('sent ACK ', sndpkt.seqno, ' to ', (server_ip, server_portno))
-			seqno =+1
 
 			#Buffer packet is it is not base packet and mark it as acked
 			if rcvpkt.seqno != rcv_base :
-				rcv_data.insert(rcvpkt.seqno-1,rcvpkt)
+				rcv_data.insert(rcvpkt.seqno-1,rcvpkt.data)
+				print("--------------->")
 				# mark packed as acked
 				request_pkt.isACK == True
 			#if it is base packet or it is already acked deliver it , increase base
 			elif rcvpkt.seqno == rcv_base or request_pkt.isACK:
-				rcv_data.append(rcvpkt)
-				rcv_base+=1
+				rcv_data.append(rcvpkt.data)
+				if rcvpkt.seqno == rcv_base:
+					rcv_base+=1
 			#if it is last packet break
 			if rcvpkt.islast == True:
 				break
 		#dublicate packets just resend ACK
-		elif rcv_base-window_size <= rcvpkt.seqno and rcvpkt.seqno <= rcv_base-1:
+		# leh byd5ol hena ??????????
+		elif ((rcv_base-window_size) < rcvpkt.seqno )and (rcvpkt.seqno <= (rcv_base-1)):
 			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)  # send ACK
 			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
+			print("8888888888888888")
 
 	print(rcv_data)
 	client_socket.close()
