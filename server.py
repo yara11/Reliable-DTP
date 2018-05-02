@@ -6,7 +6,7 @@ from socket import *
 from multiprocessing import Process, Manager
 from timer import *
 
-BUFFSIZE = 2024
+BUFFSIZE = 2048
 TIMEOUT = 10 # in seconds
 
 # Creates a server-side socket that listens for client requests,
@@ -80,6 +80,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 	del client_table[client_address]
 
 #GO BACK N ALGORITHM
+#ask yara about packet lost
 def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
 	packet_timer = timer(TIMEOUT)
 	base=1
@@ -103,7 +104,8 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 			print('TIMEOUT')
 			packet_timer.start_time()
 			next_seq_num = base
-		
+
+		#ask yara how to if this is the last packet then stop this loop
 		#if the client recieved the packet and it is not corrupted
 		if client_table[client_address] == packets[base].seqno:
 			print('packet ', packets[base].seqno, ' received by ', client_address)
@@ -130,7 +132,7 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 			server_socket.sendto(packets[next_seq_num].pack(), client_address)
 			packet_timer[next_seq_num].start_timer()
 			next_seq_num+=1
-		#check if any packet ack recived within the window
+		#if ack recived within the window
 		if  (packets[base].seqno <= client_table[client_address]) and (client_table[client_address]< packets[next_seq_num].seqno) :
 			# if the base recieved an ack and it is not already acked
 			if (client_table[client_address] == packets[base].seqno) and not (packets[base].is_ACK()):
@@ -148,6 +150,12 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 				if not (packets[client_table[client_address]].is_ACK()):
 					packets[client_table[client_address]].isACK = True
 		#loop from base to next sequance number and check if any packet timed out ask yara about this 'is it logical ?'
+		# is it nragative one
+		for i in range(base,next_seq_num-1):
+			# if time out of any packet resend this packet
+			if packet_timer[base].timer_timeout and not (packets[client_table[client_address]].is_ACK()):
+				server_socket.sendto(packets[i].pack(), client_address)
+				packet_timer[i].start_timer()
 
 
 	del client_table[client_address]
@@ -185,4 +193,5 @@ def dummy_make_packets(seq_nos):
 
 print(gethostbyname(gethostname()))
 
-server_listener(2050, 4, 0, 0, go_back_n)
+server_listener(2050, 4, 0, 0, selective_repeat)
+

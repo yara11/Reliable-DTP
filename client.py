@@ -48,6 +48,7 @@ def stop_and_wait(server_ip, server_portno, client_portno, file_name, window_siz
 def go_back_n (server_ip, server_portno, client_portno, file_name, window_size):
 	client_socket = socket(AF_INET, SOCK_DGRAM)
 	rcv_data = []
+
 	request_pkt = Packet(1, len(file_name) + 8, 0, False, False, file_name)
 	client_socket.sendto(request_pkt.pack(), (server_ip, server_portno))
 	sndpkt = request_pkt
@@ -73,10 +74,54 @@ def go_back_n (server_ip, server_portno, client_portno, file_name, window_size):
 	print(rcv_data)
 	client_socket.close()
 
+def selective_repeat (server_ip, server_portno, client_portno, file_name, window_size):
+	client_socket = socket(AF_INET, SOCK_DGRAM)
+	rcv_data = []
+
+	request_pkt = Packet(1, len(file_name) + 8, 0, False, False, file_name)
+	client_socket.sendto(request_pkt.pack(), (server_ip, server_portno))
+
+	seqno = 1
+	rcv_base = 1
+
+	while True:
+		rcvpkt, server_address = client_socket.recvfrom(BUFFSIZE)
+		rcvpkt = Packet.unpack(rcvpkt)
+
+		#packet is nor corrupted and between base and base+windowsize-1
+		if not rcvpkt.is_corrupted() and rcv_base <= rcvpkt.seqno and rcvpkt.seqno <= (rcv_base+window_size-1) :
+			#print and send ACK
+			print('received packet ', seqno, ' from ', (server_ip, server_portno))
+			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)  # send ACK
+			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
+			print('sent ACK ', sndpkt.seqno, ' to ', (server_ip, server_portno))
+			seqno =+1
+
+			#Buffer packet is it is not base packet and mark it as acked
+			if rcvpkt.seqno != rcv_base :
+				rcv_data.insert(rcvpkt.seqno-1,rcvpkt)
+				# mark packed as acked
+				request_pkt.isACK == True
+			#if it is base packet or it is already acked deliver it , increase base
+			elif rcvpkt.seqno == rcv_base or request_pkt.isACK:
+				rcv_data.append(rcvpkt)
+				rcv_base+=1
+			#if it is last packet break
+			if rcvpkt.islast == True:
+				break
+		#dublicate packets just resend ACK
+		elif rcv_base-window_size <= rcvpkt.seqno and rcvpkt.seqno <= rcv_base-1:
+			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)  # send ACK
+			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
+
+	print(rcv_data)
+	client_socket.close()
+
+
 
 # client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
-x = Process(target=client_init, args=('127.0.1.1', 2050, 1025, '', 4, go_back_n))
-y = Process(target=client_init, args=('127.0.1.1', 2050, 1026, '', 4, go_back_n))
+x = Process(target=client_init, args=('127.0.1.1', 2050, 1025, '', 4, selective_repeat))
+y = Process(target=client_init, args=('127.0.1.1', 2050, 1026, '', 4, selective_repeat))
 
 x.start()
 y.start()
