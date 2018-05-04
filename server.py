@@ -70,6 +70,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
 		# waiting for ACK
 		while True:
+			# in case client closed connection
 			# client is declared unreachable after 10 trials
 			if trials == 10:
 				print('unable to reach client ', client_address)
@@ -114,6 +115,8 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 	trials = 0
 
 	while base_ind < len(packets):
+
+		# in case client close connection
 		if trials == 5:
 			print('unable to reach client ', client_address)
 			del client_table[client_address]
@@ -122,8 +125,9 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 		# if there is a space in window, send packets
 		if next_seq_num < max_seq_no and next_seq_num < packets[base_ind].seqno+window_size:
 			# send packet
-			server_socket.sendto(packets[next_seq_num].pack(), client_address)
-			print('packet ', next_seq_num, ' sent to ', client_address)
+			if not lose_packet(plp): # no packet loss
+				server_socket.sendto(packets[next_seq_num].pack(), client_address)
+				print('packet ', next_seq_num, ' sent to ', client_address)
 			# the base is sent, restart timer
 			if next_seq_num == packets[base_ind].seqno:
 				packet_timer.start_timer()
