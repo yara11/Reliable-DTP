@@ -8,7 +8,7 @@ from timer import *
 import random
 
 BUFFSIZE = 512
-TIMEOUT = 5 # in seconds
+TIMEOUT = 1 # in seconds
 MYIP = '127.0.1.1'
 
 # Creates a server-side socket that listens for client requests,
@@ -98,39 +98,56 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 #GO BACK N ALGORITHM
 #ask yara about packet lost
 def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+	
+	packets = make_packets(file_name,list(range(0, BUFFSIZE)))
+	
+	# index of the base packet in the list
+	base_ind=0
+	# the next available sequence number
+	next_seq_num=0
+	# the maximum sequence number [0...max_seq_no-1]
+	max_seq_no = len(packets)
+	print(max_seq_no)
+	
+	# Start timer
 	packet_timer = timer(TIMEOUT)
-	base=1
-	next_seq_num=1
-	sequencenumbers =  BUFFSIZE
+	trials = 0
 
-	packets = make_packets(file_name,list(range(1,BUFFSIZE)))
-	#print(range(1,sequencenumbers+1))
-	while base < len (packets):
-		#if there is a space in window send packets
-		if next_seq_num < base+window_size:
+	while base_ind < len(packets):
+		if trials == 5:
+			print('unable to reach client ', client_address)
+			del client_table[client_address]
+			return
+
+		# if there is a space in window, send packets
+		if next_seq_num < max_seq_no and next_seq_num < packets[base_ind].seqno+window_size:
+			# send packet
 			server_socket.sendto(packets[next_seq_num].pack(), client_address)
-			if base == next_seq_num:
+			print('packet ', next_seq_num, ' sent to ', client_address)
+			# the base is sent, restart timer
+			if next_seq_num == packets[base_ind].seqno:
 				packet_timer.start_timer()
-				print ("start timer if 1")
-			next_seq_num +=1
-
-		#timeout for the first unacked packet
-		#will send all unacked packets again
-		if packet_timer.timer_timeout():
-			print('TIMEOUT')
-			packet_timer.start_time()
-			next_seq_num = base
+			next_seq_num = next_seq_num+1
 
 		#ask yara how to if this is the last packet then stop this loop
 		#if the client recieved the packet and it is not corrupted
-		if client_table[client_address] == packets[base].seqno:
-			print('packet ', packets[base].seqno, ' received by ', client_address)
-			base = client_table[client_address]+1
-			if base == next_seq_num:
-				# astafdt eh mn de ????????????			
-				packet_timer.timer_timeout()
-			else:
+		# if base ACK received, change base
+		if client_table[client_address] == packets[base_ind].seqno:
+			print('packet ', packets[base_ind].seqno, ' received by ', client_address)
+			base_ind += 1
+			if base_ind != next_seq_num:
 				packet_timer.start_timer()
+			else:
+				trials = 0
+
+		# timeout for the first unacked packet
+		# will send all unacked packets again
+		if packet_timer.timer_timeout():
+			trials += 1
+			print(trials, '. sending packet ', packets[base_ind].seqno, ' to ', client_address, ' timed-out')
+			packet_timer.start_timer()
+			next_seq_num = base_ind
+
 	del client_table[client_address]
 
 
@@ -217,5 +234,6 @@ def dummy_make_packets(seq_nos):
 
 #print(gethostbyname(gethostname()))
 
-server_listener(1028, 0, 0, 0.2, stop_and_wait)
+# server_listener(1028, 0, 0, 0.2, stop_and_wait)
+server_listener(1028, 4, 0, 0.2, go_back_n)
 #server_listener(2050, 4, 0, 0, selective_repeat)

@@ -8,7 +8,7 @@ class timer:
 
 
 	#starting timer
-	def start_timer (self):
+	def start_timer(self):
 		self.stop_time = time.time() + self.timeout
 
 	#time out

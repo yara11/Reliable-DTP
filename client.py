@@ -52,28 +52,35 @@ def go_back_n (server_ip, server_portno, client_portno, file_name, window_size):
 	client_socket = socket(AF_INET, SOCK_DGRAM)
 	rcv_data = []
 
-	request_pkt = Packet(1, len(file_name) + 8, 0, False, False, file_name)
+	# send request
+	request_pkt = Packet(0, len(file_name) + 8, 0, False, False, file_name)
 	client_socket.sendto(request_pkt.pack(), (server_ip, server_portno))
+
+	print('requested ', file_name, ' from ', (server_ip, server_portno))
+
 	sndpkt = request_pkt
-	seqno = 1
+	seqno = 0
 
 	while True:
+		# receive packet
 		rcvpkt, server_address = client_socket.recvfrom(BUFFSIZE)
 		rcvpkt = Packet.unpack(rcvpkt)
 
 		if not rcvpkt.is_corrupted() and rcvpkt.seqno == seqno:
-			rcv_data.append(rcvpkt.data) # extract, deliver
+			# extract, deliver
+			rcv_data.append(rcvpkt.data)
 			print('received packet ', seqno, ' from ', (server_ip, server_portno))
-			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)  # send ACK
+			# send ACK
+			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)
 			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
 			print('sent ACK ', sndpkt.seqno, ' to ', (server_ip, server_portno))
 
-			#ask yara about this
+			# should be % max_seq_no
 			seqno = seqno + 1
 			if rcvpkt.islast == True:
 				break
 		else :
-			print ("dublicate packet")
+			print ('duplicate packet ', ' resent')
 	print(rcv_data)
 	client_socket.close()
 
@@ -125,9 +132,10 @@ def selective_repeat (server_ip, server_portno, client_portno, file_name, window
 
 
 
-client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
-# x = Process(target=client_init, args=('127.0.1.1', 2050, 1025, '', 4, selective_repeat))
-# y = Process(target=client_init, args=('127.0.1.1', 2050, 1026, '', 4, selective_repeat))
+# client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
+# client_init('127.0.1.1', 1028, 1025, '', 4, go_back_n)
+x = Process(target=client_init, args=('127.0.1.1', 1028, 1025, '', 4, go_back_n))
+y = Process(target=client_init, args=('127.0.1.1', 1028, 1026, '', 4, go_back_n))
 
-# x.start()
-# y.start()
+x.start()
+y.start()
