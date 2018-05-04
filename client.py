@@ -122,9 +122,9 @@ def selective_repeat (server_ip, server_portno, client_portno, file_name, window
 
 
 
-# client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
-x = Process(target=client_init, args=('127.0.1.1', 2050, 1025, '', 4, selective_repeat))
-y = Process(target=client_init, args=('127.0.1.1', 2050, 1026, '', 4, selective_repeat))
+client_init('127.0.1.1', 1028, 1025, '', 0, stop_and_wait)
+# x = Process(target=client_init, args=('127.0.1.1', 2050, 1025, '', 4, selective_repeat))
+# y = Process(target=client_init, args=('127.0.1.1', 2050, 1026, '', 4, selective_repeat))
 
-x.start()
-y.start()
+# x.start()
+# y.start()
