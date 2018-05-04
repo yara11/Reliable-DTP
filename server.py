@@ -22,7 +22,6 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 	print('started server ', gethostbyname(gethostname()), ' on port ', server_portno, '\n')
 
 	while True:
-
 		# receive message
 		request_msg, client_address = server_socket.recvfrom(BUFFSIZE)
 		request_msg = Packet.unpack(request_msg)
@@ -57,7 +56,6 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 	print('sending ', file_name, 'to ', client_address)
 
 	for sndpkt in packets:
-		
 		# send packet
 		if not lose_packet(plp): # no packet loss
 			server_socket.sendto(sndpkt.pack(), client_address)
@@ -66,35 +64,34 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 		# 	print('packet loss')
 		
 		# start timer
-		now = time.time()
-		future = now + TIMEOUT
+		packet_timer = timer(TIMEOUT)
 
 		trials = 0
 
 		# waiting for ACK
 		while True:
+			# client is declared unreachable after 10 trials
 			if trials == 10:
 				print('unable to reach client ', client_address)
 				del client_table[client_address]
 				return
+			
 			# if timeout, resend, restart timer
-			if time.time() >= future:
+			if packet_timer.timer_timeout():
 				trials +=1
 				if not lose_packet(plp): #no packet loss
 					server_socket.sendto(sndpkt.pack(), client_address)
 					print('packet ', sndpkt.seqno, ' resent to ', client_address)
 				# else:
-				# 	print('packet loss')
-
-				now = time.time()
-				future = now + TIMEOUT
-				continue
+				# 	print('packet re-loss')
+				# restart timer
+				packet_timer.start_timer()
 			
 			# if ACK received for this client, with this seq no
 			if client_table[client_address] == sndpkt.seqno:
 				print('packet ', sndpkt.seqno, ' received by ', client_address)
 				break
-	# remove status of this client
+	# request served, remove status of this client
 	del client_table[client_address]
 
 

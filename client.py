@@ -13,32 +13,35 @@ def stop_and_wait(server_ip, server_portno, client_portno, file_name, window_siz
 	rcv_data = []
 
 	# TODO: calc checksum
+
+	# Create request and send to server
 	request_pkt = Packet(1, len(file_name)+8, 0, False, False, file_name)
-	msg = 'hi plz work'
 	client_socket.sendto(request_pkt.pack(), (server_ip, server_portno))
-	# client_socket.sendto(msg.encode(), (server_ip, server_portno))
+	
 	print('requested ', file_name, ' from ', (server_ip, server_portno))
 
 	sndpkt = request_pkt
 	seqno = 0
-	while True:
-		# TODO: TIMEOUT
 
+	while True:
 		rcvpkt, server_address = client_socket.recvfrom(BUFFSIZE)
 		rcvpkt = Packet.unpack(rcvpkt)
 
 		if not rcvpkt.is_corrupted() and rcvpkt.seqno == seqno:
-			rcv_data.append(rcvpkt.data) # extract, deliver
+			# extract, deliver
+			rcv_data.append(rcvpkt.data)
 			print('received packet ', seqno, ' from ', (server_ip, server_portno))
-			# TODO: CREATE CLEANER ACK PACKAGE - THIS IS NOT RELIABLE
-			sndpkt = Packet(rcvpkt.seqno, 8, 0, True) # send ACK
+			
+			# send ACK
+			sndpkt = Packet(rcvpkt.seqno, 8, 0, True)
 			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
 			print('sent ACK ', sndpkt.seqno, ' to ', (server_ip, server_portno))
+			
 			seqno = (seqno+1)%2
 			if rcvpkt.islast == True:
 				break
 
-		else:# resend packet/ack
+		else: # resend packet/ack
 			client_socket.sendto(sndpkt.pack(), (server_ip, server_portno))
 			print('resent ACK ', sndpkt.seqno, ' to ', (server_ip, server_portno))
 		
