@@ -30,13 +30,12 @@ class Packet:
 	# 		pointer +=2
 	# 	if d_lenght:
 	# 		self.cksum += ord(data[pointer])
-	# 	#overflow
-	# 	self.cksum = (self.cksum >> 16) + (self.cksum &0xffff)
-	# 	# one's complement
-	# 	result = (~self.cksum) & 0xffff
-	# 	result += (self.cksum)
-	# 	self.cksum = result
-	# 	return result
+	# 	add up the carry 
+        #       while(cksum >> 16) > 0:
+	#	 	self.cksum = (self.cksum >> 16) + (self.cksum &0xffff)
+	#	self.cksum+=self.cksum >> 16
+	#	self.cksum = ~self.cksum
+	# 	return self.cksum & 0xffff
 
 	def is_corrupted(self):
 		return self.cksum != self.calc_checksum()
