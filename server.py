@@ -33,7 +33,10 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 		if request_msg.is_ACK(): # existing client ACK
 			if not lose_packet(plp): # no ACK packet loss
 				# update client table
-				client_table[client_address] = request_msg.seqno
+				if rdtp_fn == selective_repeat:
+					client_table[client_address].append(request_msg.seqno)
+				else:
+					client_table[client_address] = request_msg.seqno
 				print('received ack ', request_msg.seqno, ' from ', client_address)
 			# else:
 			# 	print('ACK loss')
@@ -42,8 +45,12 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			file_name = request_msg.data
 			print('received request ', file_name, ' from ', client_address)
 			client_table[client_address] = None
+			# need a list in case of selective_repeat
+			if rdtp_fn == selective_repeat:
+				client_table[client_address] = Manager().list()
 			child = Process(target=rdtp_fn, args=(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table))
 			child.start()
+			child.join()
 
 	server_socket.close()
 
@@ -97,7 +104,6 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
 
 #GO BACK N ALGORITHM
-#ask yara about packet lost
 def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
 	
 	packets = make_packets(file_name,list(range(0, BUFFSIZE)))
@@ -155,51 +161,92 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 	del client_table[client_address]
 
 
-# Selective Repeat Algorithm
+
 def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
-	#to creat a timer for each packet
-	packet_timer = [timer(TIMEOUT) for i in range(BUFFSIZE)]
-	#make packets with the buffer size
-	packets = make_packets(file_name, list(range(1, BUFFSIZE)))
-	base = 1
-	next_seq_num = 1
 
-	while base < len (packets):
+	packets = make_packets(file_name, list(range(0, 1000)))
+	base_ind = 0
+	next_seq_num = 0
+
+	# maps seq number of packet to process that manages it
+	seqno_to_process = {}
+
+	while base_ind < len(packets):
 		# if there is a space in window send packets and start its timer
-		if next_seq_num < base + window_size:
-			server_socket.sendto(packets[next_seq_num].pack(), client_address)
-			packet_timer[next_seq_num].start_timer()
-			next_seq_num+=1
-		#if ack recived within the window
-		if  (packets[base].seqno <= client_table[client_address]) and (client_table[client_address]< packets[next_seq_num].seqno) :
-			# if the base recieved an ack and it is not already acked
-			if (client_table[client_address] == packets[base].seqno) and not (packets[base].is_ACK()):
-				print('packet ', packets[base].seqno, ' received by ', client_address)
-				base = client_table[client_address] + 1
-			# if base packet is already acked then increament base
-			elif packets[base].is_ACK():
-				base = +1
-			# if it is any other packet print it and mark it as acked
-			else :
-				# ask yara about this -> packets[client_table[client_address]].seqno i think something wrong or not
-				#client_table[client_address] and seq # are the same here ??
-				print('packet ', packets[client_table[client_address]].seqno, ' received by ', client_address)
-				#if ACk recieved for a packet between base and next_seq_num mark it as acked
-				if not (packets[client_table[client_address]].is_ACK()):
-					packets[client_table[client_address]].isACK = True
-		#loop from base to next sequance number and check if any packet timed out ask yara about this 'is it logical ?'
-		# is it nragative one
-		for i in range(base,next_seq_num-1):
-			# if time out of any packet resend this packet
-			print("i value ------>%d",i)
-			#if (packet_timer[i].timer_timeout) and not (packets[client_table[client_address]].is_ACK()):
-			if (packet_timer[i].timer_timeout):
-				print("---------------->i am here and i am not supposed to be here")
-				server_socket.sendto(packets[i].pack(), client_address)
-				packet_timer[i].start_timer()
+		if next_seq_num < packets[base_ind].seqno + window_size:
+			pkt_process = Process(target=sr_packet_manager, args=(server_socket, client_address, packets[next_seq_num]))
+			seqno_to_process[next_seq_num] = pkt_process
+			pkt_process.start()
+			next_seq_num += 1
 
+		# copy of acked packets list for this client
+		acked_pkts = client_table[client_address][:]
+		for pkt_seqno in acked_pkts:
+			# stop the process awaiting this ack
+			seqno_to_process[pkt_seqno].terminate()
+			# remove from actual list
+			client_table[client_address].remove(pkt_seqno)
+			# move window if this is the base
+			if pkt_seqno == base_ind:
+				base_ind += 1
 
 	del client_table[client_address]
+
+def sr_packet_manager(server_socket, client_address, sndpkt):
+	server_socket.sendto(sndpkt.pack(), client_address)
+	print('packet ', sndpkt.seqno, ' sent to ', client_address)
+	packet_timer = timer(TIMEOUT)
+	
+	while True:
+		if packet_timer.timer_timeout():
+			server_socket.sendto(sndpkt.pack(), client_address)
+			print('packet ', sndpkt.seqno, ' resent to ', client_address)
+			packet_timer.start_timer()
+
+
+# # Selective Repeat Algorithm
+# def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+# 	#to creat a timer for each packet
+# 	packet_timer = [timer(TIMEOUT) for i in range(1000)]
+# 	#make packets with the buffer size
+# 	packets = make_packets(file_name, list(range(0, 1000)))
+# 	base = 0
+# 	next_seq_num = 0
+
+# 	while base < len (packets):
+# 		# if there is a space in window send packets and start its timer
+# 		if next_seq_num < packets[base].seqno + window_size:
+# 			server_socket.sendto(packets[next_seq_num].pack(), client_address)
+# 			packet_timer[next_seq_num].start_timer()
+# 			next_seq_num+=1
+# 		# if ack recived within the window
+# 		if  (packets[base].seqno <= client_table[client_address]) and (client_table[client_address]< packets[next_seq_num].seqno) :
+# 			# if the base recieved an ack and it is not already acked
+# 			if (client_table[client_address] == packets[base].seqno) and not (packets[base].is_ACK()):
+# 				print('packet ', packets[base].seqno, ' received by ', client_address)
+# 				base = client_table[client_address] + 1
+# 			# if base packet is already acked then increament base
+# 			elif packets[base].is_ACK():
+# 				base = +1
+# 			# if it is any other packet print it and mark it as acked
+# 			else :
+# 				# ask yara about this -> packets[client_table[client_address]].seqno i think something wrong or not
+# 				#client_table[client_address] and seq # are the same here ??
+# 				print('packet ', packets[client_table[client_address]].seqno, ' received by ', client_address)
+# 				#if ACk recieved for a packet between base and next_seq_num mark it as acked
+# 				if not (packets[client_table[client_address]].is_ACK()):
+# 					packets[client_table[client_address]].isACK = True
+# 		# loop from base to next sequance number and check if any packet timed out ask yara about this 'is it logical ?'
+# 		# is it nragative one
+# 		for i in range(base,next_seq_num-1):
+# 			# if time out of any packet resend this packet
+# 			print("i value ------>%d",i)
+# 			#if (packet_timer[i].timer_timeout) and not (packets[client_table[client_address]].is_ACK()):
+# 			if (packet_timer[i].timer_timeout):
+# 				print("---------------->i am here and i am not supposed to be here")
+# 				server_socket.sendto(packets[i].pack(), client_address)
+# 				packet_timer[i].start_timer()
+# 	del client_table[client_address]
 
 
 # (Packet loss simulation)
@@ -239,5 +286,5 @@ def dummy_make_packets(seq_nos):
 #print(gethostbyname(gethostname()))
 
 # server_listener(1028, 0, 0, 0.2, stop_and_wait)
-server_listener(1028, 4, 0, 0.2, go_back_n)
-#server_listener(2050, 4, 0, 0, selective_repeat)
+# server_listener(1028, 4, 0, 0.2, go_back_n)
+server_listener(1028, 4, 0, 0.2, selective_repeat)
