@@ -1,6 +1,6 @@
 from rdtp import Packet
 from socket import *
-import time
+import time, sys
 from multiprocessing import Process
 
 BUFFSIZE = 512
@@ -128,11 +128,32 @@ def selective_repeat (server_ip, server_portno, client_portno, file_name, window
 	print(buffered)
 	client_socket.close()
 
-x = Process(target=client_init, args=('127.0.1.1', 1028, 1025, '', 4, selective_repeat))
-y = Process(target=client_init, args=('127.0.1.1', 1028, 1026, '', 4, selective_repeat))
+if __name__ == "__main__":
+	if len(sys.argv) != 3:
+		print('python3 usage: client.py',
+			' <protocol: stop-and-wait, go-back-n, selective-repeat> <input filename>')
+	else: # assuming correct format of input filename :)
+		filehandler = open(sys.argv[2], 'r')
+		client_args = filehandler.readlines()
+		filehandler.close()
+		protocol_name = sys.argv[1]
+		if protocol_name == 'stop-and-wait':
+			client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
+				client_args[3], int(client_args[4]), stop_and_wait)
+		elif protocol_name == 'go-back-n':
+			client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
+				client_args[3], int(client_args[4]), go_back_n)
+		elif protocol_name == 'selective-repeat':
+			client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
+				client_args[3], int(client_args[4]), selective_repeat)
+		else:
+			print('unknown protocol: ', sys.argv[1])
 
-x.start()
-y.start()
+# x = Process(target=client_init, args=('127.0.1.1', 1028, 1025, '', 4, selective_repeat))
+# y = Process(target=client_init, args=('127.0.1.1', 1028, 1026, '', 4, selective_repeat))
+
+# x.start()
+# y.start()
 
 # x.join()
 # y.join()

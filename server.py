@@ -1,5 +1,5 @@
 from rdtp import Packet
-import os
+import os, sys
 import time
 import struct
 from socket import *
@@ -11,6 +11,7 @@ import random
 BUFFSIZE = 512
 TIMEOUT = 1 # in seconds
 MYIP = '127.0.1.1'
+OO = 1<<30 # infinity
 
 # Creates a server-side socket that listens for client requests,
 # and handles each in a child process with the given rdtp_fn
@@ -245,9 +246,32 @@ def dummy_make_packets(seq_nos):
 	return packets
 
 
+if __name__ == "__main__":
+	if len(sys.argv) != 3:
+		print('python3 usage: server.py',
+			' <protocol: stop-and-wait, go-back-n, selective-repeat> <input filename>')
+	else: # assuming correct format of input filename :)
+		filehandler = open(sys.argv[2], 'r')
+		server_args = filehandler.readlines()
+		filehandler.close()
+		protocol_name = sys.argv[1]
+		if protocol_name == 'stop-and-wait':
+			server_listener(int(server_args[0]), int(server_args[1]), 
+				float(server_args[2]), float(server_args[3]), stop_and_wait)
+		elif protocol_name == 'go-back-n':
+			server_listener(int(server_args[0]), int(server_args[1]), 
+				float(server_args[2]), float(server_args[3]), go_back_n)
+		elif protocol_name == 'selective-repeat':
+			server_listener(int(server_args[0]), int(server_args[1]), 
+				float(server_args[2]), float(server_args[3]), selective_repeat)
+		else:
+			print('unknown protocol: ', sys.argv[1])
+
+
+
 
 #print(gethostbyname(gethostname()))
 
 # server_listener(1028, 0, 0, 0.2, stop_and_wait)
 # server_listener(1028, 4, 0, 0.2, go_back_n)
-server_listener(1028, 4, 0, 0.2, selective_repeat)
+# server_listener(1028, 4, 0, 0.2, selective_repeat)
