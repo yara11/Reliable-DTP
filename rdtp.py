@@ -3,14 +3,14 @@ from pprint import pprint
 
 # Packet(seqno, 8, cksum, True) returns ACK packet
 class Packet:
-	MSGFORMAT = '!LHHBB500s'
+	MSGFORMAT = '!LHHBB502s'
 	ACKSTR = 'ACK'
 
 	def __init__(self, seqno, pktlen, cksum, isACK=False, islast=False, data=''):
 		self.seqno = seqno
 		self.pktlen = pktlen
 		self.cksum = cksum
-		self.data = data[0:pktlen-8]
+		self.data = data[0:pktlen-10]
 		self.islast = islast
 		self.isACK = isACK
 
