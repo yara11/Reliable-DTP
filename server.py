@@ -36,7 +36,7 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
             continue
 
         if request_msg.is_ACK(): # existing client ACK
-            # if not lose_packet(seedvalue, plp): # no ACK packet loss
+            # if not lose_packet(plp): # no ACK packet loss
             # update client table
             if rdtp_fn == selective_repeat:
                 key = client_address + (request_msg.seqno, )
@@ -51,14 +51,14 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
             file_name = request_msg.data
             print('received request ', file_name, ' from ', client_address)
             client_table[client_address] = None
-            child = Process(target=rdtp_fn, args=(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table))
+            child = Process(target=rdtp_fn, args=(server_socket, window_size, plp, file_name, client_address, client_table))
             child.start()
 
     server_socket.close()
 
 
 
-def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+def stop_and_wait(server_socket, window_size, plp, file_name, client_address, client_table):
     
     packets = make_packets(file_name, 2) # stop and wait only needs 2 seq nos
     print('starting stop-and-wait...')
@@ -66,7 +66,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
     for sndpkt in packets:
         # send packet
-        if not lose_packet(seedvalue, plp): # no packet loss
+        if not lose_packet(plp): # no packet loss
             server_socket.sendto(sndpkt.pack(), client_address)
             print('packet ', sndpkt.seqno, ' sent to ', client_address)
         # else:
@@ -89,7 +89,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
             # if timeout, resend, restart timer
             if packet_timer.timer_timeout():
                 trials +=1
-                if not lose_packet(seedvalue, plp): #no packet loss
+                if not lose_packet(plp): #no packet loss
                     server_socket.sendto(sndpkt.pack(), client_address)
                     print('packet ', sndpkt.seqno, ' resent to ', client_address)
                 # else:
@@ -106,7 +106,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
 
 #GO BACK N ALGORITHM
-def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+def go_back_n (server_socket, window_size, plp, file_name, client_address, client_table):
     
     packets = make_packets(file_name)
     
@@ -133,7 +133,7 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
         # if there is a space in window, send packets
         if next_seq_num < max_seq_no and next_seq_num < packets[base_ind].seqno+window_size:
             # send packet
-            if not lose_packet(seedvalue, plp): # no packet loss
+            if not lose_packet(plp): # no packet loss
                 server_socket.sendto(packets[next_seq_num].pack(), client_address)
                 print('packet ', next_seq_num, ' sent to ', client_address)
             # the base is sent, restart timer
@@ -164,7 +164,7 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 
 
 
-def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
+def selective_repeat (server_socket, window_size, plp, file_name, client_address, client_table):
     packets = make_packets(file_name)
     base_ind = 0
     next_seq_num = 0
@@ -208,7 +208,7 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 
 def sr_packet_manager(server_socket, client_address, sndpkt, plp, event):
     while not event.isSet():
-        if not lose_packet(seedvalue, plp):
+        if not lose_packet(plp):
             server_socket.sendto(sndpkt.pack(), client_address)
             print('packet ', sndpkt.seqno, ' sent to ', client_address)
         print(client_address, ' lost packet ', sndpkt.seqno)
@@ -219,15 +219,15 @@ def sr_packet_manager(server_socket, client_address, sndpkt, plp, event):
 # (Packet loss simulation)
 # decides to lose or keep a packet based on PLP
 # returns true = lose packet, false = keep packet
-def lose_packet(seedvalue, plp):
+def lose_packet(plp):
     return random.random() < plp
 
 # reads file and returns list of (encoded) datagram packets
 # max seq no is seqnos-1 (infinity by default, 2 for stop-and-wait, otherwise unhandled)
 def make_packets(file_name, seqnos=OO):
-    file_name=file_name.replace('\n', '')
+    file_name=file_name.decode().replace('\n', '')
     # read file as string 
-    with open(file_name, 'r') as myfile:
+    with open(file_name, 'rb') as myfile:
         data = myfile.read()
         data_len = len(data)
         seqno = 0

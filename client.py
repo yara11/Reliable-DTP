@@ -126,14 +126,18 @@ def selective_repeat (client_socket, server_ip, server_portno, file_name, window
         # deliver in-order packets
         while rcv_base in buffered:
             rcv_base += 1
-
-    reassemble_file(file_name, buffered.values())
+    
+    rcv_list = []
+    for i in range(0, pkts_num):
+    	rcv_list.append(buffered[i].data)
+    
+    reassemble_file(file_name, rcv_list)
     client_socket.close()
 
 
 def reassemble_file(file_name, list):
     file_name.replace('\n', '')
-    fh = open('rcvd_'+file_name, "w")
+    fh = open('rcvd_'+file_name, "wb")
     for piece in list:
         fh.write(piece)
     fh.close()

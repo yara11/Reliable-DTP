@@ -13,6 +13,9 @@ class Packet:
 		self.data = data[0:pktlen-10]
 		self.islast = islast
 		self.isACK = isACK
+		if not type(self.data) is bytes:
+			self.data = self.data.encode()
+
 
 	# TODO
 	def calc_checksum(self):
@@ -46,12 +49,13 @@ class Packet:
 
 	def pack(self):
 		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, 
-			self.isACK, self.islast, self.data.encode())
+			self.isACK, self.islast, self.data)
 	
 	@staticmethod
 	def unpack(pkt):
 		unpacked_pkt = struct.unpack(Packet.MSGFORMAT, pkt)
-		return Packet(unpacked_pkt[0], unpacked_pkt[1], unpacked_pkt[2], unpacked_pkt[3], unpacked_pkt[4], unpacked_pkt[5].decode())
+		return Packet(unpacked_pkt[0], unpacked_pkt[1], unpacked_pkt[2], 
+			unpacked_pkt[3], unpacked_pkt[4], unpacked_pkt[5])
 
 	def pprint(self):
 		print(vars(self))
