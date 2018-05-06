@@ -1,5 +1,5 @@
 127.0.1.1
 1028
 1027
-sample_file.txt
+maxresdefault.jpg
 4

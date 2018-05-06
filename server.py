@@ -246,7 +246,7 @@ def make_packets(file_name, clientno, seqnos=OO):
     enc_dec.encryptMain(file_name, new_filename)
 
     # read file as string 
-    with open(file_name, 'rb') as myfile:
+    with open(new_filename, 'rb') as myfile:
         data = myfile.read()
         data_len = len(data)
         seqno = 0

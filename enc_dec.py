@@ -38,7 +38,6 @@ def encrypt(key, filename, new_filename):
 def decrypt(key, filename, new_filename):
 	chunksize = 64*1024
 	outputFile = new_filename
-	
 	with open(filename, 'rb') as infile:
 		filesize = int(infile.read(16))
 		IV = infile.read(16)
@@ -69,12 +68,12 @@ def getKey(key):
 def encryptMain(filename, new_filename):
 	global key
 	key = gen_Key()
-	encrypt(getKey(key), filename)
+	encrypt(getKey(key), filename,new_filename)
 
 def decryptMain(filename, new_filename):
 	global key
 	key = gen_Key()
-	decrypt(getKey(key), filename)
+	decrypt(getKey(key), filename,new_filename)
 
 #def Main():
 #	choice = input("Would you like to (E)ncrypt or (D)ecrypt?: ")

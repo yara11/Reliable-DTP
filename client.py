@@ -133,20 +133,20 @@ def selective_repeat (client_socket, server_ip, server_portno, client_portno, fi
     for i in range(0, pkts_num):
     	rcv_list.append(buffered[i].data)
     
-    reassemble_file(file_name, rcv_list)
+    reassemble_file(file_name, rcv_list,client_portno)
     client_socket.close()
 
 
 def reassemble_file(file_name, list, client_portno):
     file_name.replace('\n', '')
-    fh = open('rcvd_'+file_name, "wb")
+    file_name = str(client_portno)+file_name
+    fh = open(file_name, "wb")
     for piece in list:
         fh.write(piece)
     fh.close()
-    new_filename = '(rcv)'+str(client_portno)+file_name
+    new_filename = 'dec_'+file_name+file_name
     enc_dec.decryptMain(file_name, new_filename) 
     print('file ', file_name, ' received successfully as ', new_filename)
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

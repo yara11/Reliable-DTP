@@ -20,6 +20,19 @@ class Packet:
     # TODO
     # def calc_checksum(self):
     #     return 0
+
+    #def carry_around_add(a, b):
+    #c = a + b
+    #return (c & 0xffff) + (c >> 16)
+
+    #def checksum(msg):
+    #s = 0
+    #for i in range(0, len(msg)-1, 2):
+     #   w = msg[i] + msg[i+1] << 8
+      #  s = carry_around_add(s, w)
+    #return ~s & 0xffff
+
+
     def calc_checksum(self):
         data = self.data
         self.cksum = 0
