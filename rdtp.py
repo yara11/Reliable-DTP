@@ -45,7 +45,8 @@ class Packet:
 		return self.isACK
 
 	def pack(self):
-		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, self.isACK, self.islast, self.data.encode())
+		return struct.pack(Packet.MSGFORMAT, self.seqno, self.pktlen, self.cksum, 
+			self.isACK, self.islast, self.data.encode())
 	
 	@staticmethod
 	def unpack(pkt):

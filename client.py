@@ -8,10 +8,11 @@ HEADERSIZE = 10
 OO = 1 << 30
 
 def client_init(server_ip, server_portno, client_portno, file_name, window_size, rdtp_fn):
-    rdtp_fn(server_ip, server_portno, client_portno, file_name, window_size)
-
-def stop_and_wait(server_ip, server_portno, client_portno, file_name, window_size):
     client_socket = socket(AF_INET, SOCK_DGRAM)
+    client_socket.bind(('', client_portno))
+    rdtp_fn(client_socket, server_ip, server_portno, file_name, window_size)
+
+def stop_and_wait(client_socket, server_ip, server_portno, file_name, window_size):
     rcv_data = []
 
     # TODO: calc checksum
@@ -50,7 +51,7 @@ def stop_and_wait(server_ip, server_portno, client_portno, file_name, window_siz
     reassemble_file(file_name, rcv_data)
     client_socket.close()
 
-def go_back_n (server_ip, server_portno, client_portno, file_name, window_size):
+def go_back_n (client_socket, server_ip, server_portno, file_name, window_size):
     client_socket = socket(AF_INET, SOCK_DGRAM)
     rcv_data = []
 
@@ -86,7 +87,7 @@ def go_back_n (server_ip, server_portno, client_portno, file_name, window_size):
     reassemble_file(file_name, rcv_data)
     client_socket.close()
 
-def selective_repeat (server_ip, server_portno, client_portno, file_name, window_size):
+def selective_repeat (client_socket, server_ip, server_portno, file_name, window_size):
     client_socket = socket(AF_INET, SOCK_DGRAM)
     buffered = {}
     delivered = {}
@@ -131,7 +132,7 @@ def selective_repeat (server_ip, server_portno, client_portno, file_name, window
 
 
 def reassemble_file(file_name, list):
-	file_name.replace('\n', '')
+    file_name.replace('\n', '')
     fh = open('rcvd_'+file_name, "w")
     for piece in list:
         fh.write(piece)

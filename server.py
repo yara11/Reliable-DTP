@@ -17,7 +17,9 @@ OO = 1<<30 # infinity
 # Creates a server-side socket that listens for client requests,
 # and handles each in a child process with the given rdtp_fn
 def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
-    
+    # assign seed value
+    random.seed(seedvalue)
+
     server_socket = socket(AF_INET, SOCK_DGRAM)
     server_socket.bind((gethostbyname(gethostname()), server_portno))
     client_table = Manager().dict()
@@ -34,7 +36,7 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
             continue
 
         if request_msg.is_ACK(): # existing client ACK
-            # if not lose_packet(plp): # no ACK packet loss
+            # if not lose_packet(seedvalue, plp): # no ACK packet loss
             # update client table
             if rdtp_fn == selective_repeat:
                 key = client_address + (request_msg.seqno, )
@@ -64,7 +66,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
 
     for sndpkt in packets:
         # send packet
-        if not lose_packet(plp): # no packet loss
+        if not lose_packet(seedvalue, plp): # no packet loss
             server_socket.sendto(sndpkt.pack(), client_address)
             print('packet ', sndpkt.seqno, ' sent to ', client_address)
         # else:
@@ -87,7 +89,7 @@ def stop_and_wait(server_socket, window_size, seedvalue, plp, file_name, client_
             # if timeout, resend, restart timer
             if packet_timer.timer_timeout():
                 trials +=1
-                if not lose_packet(plp): #no packet loss
+                if not lose_packet(seedvalue, plp): #no packet loss
                     server_socket.sendto(sndpkt.pack(), client_address)
                     print('packet ', sndpkt.seqno, ' resent to ', client_address)
                 # else:
@@ -131,7 +133,7 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
         # if there is a space in window, send packets
         if next_seq_num < max_seq_no and next_seq_num < packets[base_ind].seqno+window_size:
             # send packet
-            if not lose_packet(plp): # no packet loss
+            if not lose_packet(seedvalue, plp): # no packet loss
                 server_socket.sendto(packets[next_seq_num].pack(), client_address)
                 print('packet ', next_seq_num, ' sent to ', client_address)
             # the base is sent, restart timer
@@ -206,7 +208,7 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 
 def sr_packet_manager(server_socket, client_address, sndpkt, plp, event):
     while not event.isSet():
-        if not lose_packet(plp):
+        if not lose_packet(seedvalue, plp):
             server_socket.sendto(sndpkt.pack(), client_address)
             print('packet ', sndpkt.seqno, ' sent to ', client_address)
         print(client_address, ' lost packet ', sndpkt.seqno)
@@ -217,7 +219,7 @@ def sr_packet_manager(server_socket, client_address, sndpkt, plp, event):
 # (Packet loss simulation)
 # decides to lose or keep a packet based on PLP
 # returns true = lose packet, false = keep packet
-def lose_packet(plp):
+def lose_packet(seedvalue, plp):
     return random.random() < plp
 
 # reads file and returns list of (encoded) datagram packets
@@ -251,29 +253,6 @@ def make_packets(file_name, seqnos=OO):
 
         return packets
 
-def dummy_make_packets(seqnos):
-    str_dummy = 'The Quick Brown Fox Jumped Over The Lazy Dog.'
-    str_len = len(str_dummy)
-    data_size = 10
-    stt_ind = 0
-    seqno = 0
-
-    packets = []
-    
-    while stt_ind < str_len:
-        data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
-        packet = Packet(seqno, len(data)+HEADERSIZE, 0, False, False, data)
-        if stt_ind+data_size >= str_len:
-            packet.islast = True
-        packets.append(packet)
-        # packet.print()
-        # Packet.unpack(packet.pack()).print()
-        stt_ind += data_size
-        seqno = (seqno+1)%seqnos
-
-    return packets
-
-
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print('python3 usage: server.py',
@@ -297,6 +276,28 @@ if __name__ == "__main__":
 
 
 
+
+def dummy_make_packets(seqnos):
+    str_dummy = 'The Quick Brown Fox Jumped Over The Lazy Dog.'
+    str_len = len(str_dummy)
+    data_size = 10
+    stt_ind = 0
+    seqno = 0
+
+    packets = []
+    
+    while stt_ind < str_len:
+        data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
+        packet = Packet(seqno, len(data)+HEADERSIZE, 0, False, False, data)
+        if stt_ind+data_size >= str_len:
+            packet.islast = True
+        packets.append(packet)
+        # packet.print()
+        # Packet.unpack(packet.pack()).print()
+        stt_ind += data_size
+        seqno = (seqno+1)%seqnos
+
+    return packets
 
 #print(gethostbyname(gethostname()))
 
