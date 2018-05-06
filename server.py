@@ -31,13 +31,15 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			continue
 
 		if request_msg.is_ACK(): # existing client ACK
-			if not lose_packet(plp): # no ACK packet loss
-				# update client table
-				if rdtp_fn == selective_repeat:
-					client_table[client_address].append(request_msg.seqno)
-				else:
-					client_table[client_address] = request_msg.seqno
-				print('received ack ', request_msg.seqno, ' from ', client_address)
+			# if not lose_packet(plp): # no ACK packet loss
+			# update client table
+			if rdtp_fn == selective_repeat:
+				# print("hi : ", request_msg.seqno)
+				# print(client_table[client_address])
+				client_table[client_address].append(request_msg.seqno)
+			else:
+				client_table[client_address] = request_msg.seqno
+			print('received ack ', request_msg.seqno, ' from ', client_address)
 			# else:
 			# 	print('ACK loss')
 
@@ -47,10 +49,11 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			client_table[client_address] = None
 			# need a list in case of selective_repeat
 			if rdtp_fn == selective_repeat:
-				client_table[client_address] = Manager().list()
+				new_list_mgr = Manager().list()
+				client_table[client_address] = new_list_mgr
+				# print(client_table[client_address])
 			child = Process(target=rdtp_fn, args=(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table))
 			child.start()
-			child.join()
 
 	server_socket.close()
 
@@ -170,12 +173,14 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 
 	# maps seq number of packet to process that manages it
 	seqno_to_process = {}
+	acknowledged = {}
 
 	while base_ind < len(packets):
 		# if there is a space in window send packets and start its timer
-		if next_seq_num < packets[base_ind].seqno + window_size:
-			pkt_process = Process(target=sr_packet_manager, args=(server_socket, client_address, packets[next_seq_num]))
+		if next_seq_num < min(len(packets), packets[base_ind].seqno + window_size):
+			pkt_process = Process(target=sr_packet_manager, args=(server_socket, client_address, packets[next_seq_num], plp))
 			seqno_to_process[next_seq_num] = pkt_process
+			acknowledged[next_seq_num] = False
 			pkt_process.start()
 			next_seq_num += 1
 
@@ -184,23 +189,27 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 		for pkt_seqno in acked_pkts:
 			# stop the process awaiting this ack
 			seqno_to_process[pkt_seqno].terminate()
+			acknowledged[pkt_seqno] = True
 			# remove from actual list
 			client_table[client_address].remove(pkt_seqno)
-			# move window if this is the base
-			if pkt_seqno == base_ind:
-				base_ind += 1
+		
+		# move window as much as necessary
+		while base_ind < len(packets) and acknowledged[base_ind] == True:
+			base_ind += 1
 
 	del client_table[client_address]
 
-def sr_packet_manager(server_socket, client_address, sndpkt):
-	server_socket.sendto(sndpkt.pack(), client_address)
-	print('packet ', sndpkt.seqno, ' sent to ', client_address)
+def sr_packet_manager(server_socket, client_address, sndpkt, plp):
+	if not lose_packet(plp):
+		server_socket.sendto(sndpkt.pack(), client_address)
+		print('packet ', sndpkt.seqno, ' sent to ', client_address)
 	packet_timer = timer(TIMEOUT)
 	
 	while True:
 		if packet_timer.timer_timeout():
-			server_socket.sendto(sndpkt.pack(), client_address)
-			print('packet ', sndpkt.seqno, ' resent to ', client_address)
+			if not lose_packet(plp):
+				server_socket.sendto(sndpkt.pack(), client_address)
+				print('packet ', sndpkt.seqno, ' resent to ', client_address)
 			packet_timer.start_timer()
 
 
