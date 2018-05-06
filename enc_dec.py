@@ -8,10 +8,10 @@ import binascii
 
 key = ''
 
-def encrypt(key, filename):
+def encrypt(key, filename, new_filename):
 	# reading chunks from the file
 	chunksize = 64*1024
-	outputFile =   "(encrypted)"+filename
+	outputFile = new_filename
 	filesize = str(os.path.getsize(filename)).zfill(16)
 	#iv used to randomize and produce distinct ciphertext
 	IV = Random.new().read(16)
@@ -35,9 +35,9 @@ def encrypt(key, filename):
 				outfile.write(encryptor.encrypt(chunk))
 	return outputFile
 
-def decrypt(key, filename):
+def decrypt(key, filename, new_filename):
 	chunksize = 64*1024
-	outputFile = "(decrypted)"+filename[11:]
+	outputFile = new_filename
 	
 	with open(filename, 'rb') as infile:
 		filesize = int(infile.read(16))
@@ -66,12 +66,12 @@ def getKey(key):
 	hasher = SHA256.new(key.encode('utf-8'))
 	return hasher.digest()
 
-def encryptMain(filename):
+def encryptMain(filename, new_filename):
 	global key
 	key = gen_Key()
 	encrypt(getKey(key), filename)
 
-def decryptMain(filename):
+def decryptMain(filename, new_filename):
 	global key
 	key = gen_Key()
 	decrypt(getKey(key), filename)

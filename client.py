@@ -11,9 +11,9 @@ OO = 1 << 30
 def client_init(server_ip, server_portno, client_portno, file_name, window_size, rdtp_fn):
     client_socket = socket(AF_INET, SOCK_DGRAM)
     client_socket.bind(('', client_portno))
-    rdtp_fn(client_socket, server_ip, server_portno, file_name, window_size)
+    rdtp_fn(client_socket, server_ip, server_portno, client_portno, file_name, window_size)
 
-def stop_and_wait(client_socket, server_ip, server_portno, file_name, window_size):
+def stop_and_wait(client_socket, server_ip, server_portno, client_portno, file_name, window_size):
     rcv_data = []
 
     # TODO: calc checksum
@@ -53,7 +53,7 @@ def stop_and_wait(client_socket, server_ip, server_portno, file_name, window_siz
     reassemble_file(file_name, rcv_data)
     client_socket.close()
 
-def go_back_n (client_socket, server_ip, server_portno, file_name, window_size):
+def go_back_n (client_socket, server_ip, server_portno, client_portno, file_name, window_size):
     client_socket = socket(AF_INET, SOCK_DGRAM)
     rcv_data = []
 
@@ -89,7 +89,7 @@ def go_back_n (client_socket, server_ip, server_portno, file_name, window_size):
     reassemble_file(file_name, rcv_data)
     client_socket.close()
 
-def selective_repeat (client_socket, server_ip, server_portno, file_name, window_size):
+def selective_repeat (client_socket, server_ip, server_portno, client_portno, file_name, window_size):
     client_socket = socket(AF_INET, SOCK_DGRAM)
     buffered = {}
     delivered = {}
@@ -137,16 +137,15 @@ def selective_repeat (client_socket, server_ip, server_portno, file_name, window
     client_socket.close()
 
 
-def reassemble_file(file_name, list):
+def reassemble_file(file_name, list, client_portno):
     file_name.replace('\n', '')
     fh = open('rcvd_'+file_name, "wb")
     for piece in list:
         fh.write(piece)
     fh.close()
-    #file_name = enc_dec.decryptMain(file_name)
-    file_name = 'rcvd_'+file_name
-    enc_dec.decryptMain(file_name) 
-    print('file ', file_name, ' received successfully')
+    new_filename = '(rcv)'+str(client_portno)+file_name
+    enc_dec.decryptMain(file_name, new_filename) 
+    print('file ', file_name, ' received successfully as ', new_filename)
 
 
 if __name__ == "__main__":

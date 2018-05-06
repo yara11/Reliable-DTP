@@ -66,7 +66,7 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 def stop_and_wait(server_socket, window_size, plp, loss_rng, pcp, corrupt_rng, 
     file_name, client_address, client_table):
     
-    packets = make_packets(file_name, 2) # stop and wait only needs 2 seq nos
+    packets = make_packets(file_name, client_address[1], 2) # stop and wait only needs 2 seq nos
     print('starting stop-and-wait...')
     print('sending ', file_name, 'to ', client_address)
 
@@ -115,7 +115,7 @@ def stop_and_wait(server_socket, window_size, plp, loss_rng, pcp, corrupt_rng,
 def go_back_n (server_socket, window_size, plp, loss_rng, pcp, corrupt_rng, 
     file_name, client_address, client_table):
     
-    packets = make_packets(file_name)
+    packets = make_packets(file_name, client_address[1])
     
     # index of the base packet in the list
     base_ind=0
@@ -173,7 +173,7 @@ def go_back_n (server_socket, window_size, plp, loss_rng, pcp, corrupt_rng,
 
 def selective_repeat (server_socket, window_size, plp, loss_rng, pcp, corrupt_rng, 
     file_name, client_address, client_table):
-    packets = make_packets(file_name)
+    packets = make_packets(file_name, client_address[1])
     base_ind = 0
     next_seq_num = 0
 
@@ -239,13 +239,11 @@ def corrupt_packet(pcp, corrupt_rng):
 
 # reads file and returns list of (encoded) datagram packets
 # max seq no is seqnos-1 (infinity by default, 2 for stop-and-wait, otherwise unhandled)
-def make_packets(file_name, seqnos=OO):
-    print("-----------> %s",file_name)
+def make_packets(file_name, clientno, seqnos=OO):
+
     file_name=file_name.decode().replace('\n', '')
-    #file_name = enc_dec.encryptMain(file_name)
-    enc_dec.encryptMain(file_name)
-    file_name ="(encrypted)"+ file_name
-    print("-----------> %s",file_name)
+    new_filename = '(enc)' + str(clientno) + file_name
+    enc_dec.encryptMain(file_name, new_filename)
 
     # read file as string 
     with open(file_name, 'rb') as myfile:
@@ -295,31 +293,6 @@ if __name__ == "__main__":
                 int(server_args[2]), float(server_args[3]), selective_repeat)
         else:
             print('unknown protocol: ', sys.argv[1])
-
-
-
-
-# def dummy_make_packets(seqnos):
-#     str_dummy = 'The Quick Brown Fox Jumped Over The Lazy Dog.'
-#     str_len = len(str_dummy)
-#     data_size = 10
-#     stt_ind = 0
-#     seqno = 0
-
-#     packets = []
-    
-#     while stt_ind < str_len:
-#         data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
-#         packet = Packet(seqno, len(data)+HEADERSIZE, 0, False, False, data)
-#         if stt_ind+data_size >= str_len:
-#             packet.islast = True
-#         packets.append(packet)
-#         # packet.print()
-#         # Packet.unpack(packet.pack()).print()
-#         stt_ind += data_size
-#         seqno = (seqno+1)%seqnos
-
-#     return packets
 
 #print(gethostbyname(gethostname()))
 
