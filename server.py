@@ -7,6 +7,7 @@ import threading
 from multiprocessing import Process, Manager
 from timer import *
 import random
+import enc_dec
 
 BUFFSIZE = 512
 HEADERSIZE = 10
@@ -225,7 +226,10 @@ def lose_packet(plp):
 # reads file and returns list of (encoded) datagram packets
 # max seq no is seqnos-1 (infinity by default, 2 for stop-and-wait, otherwise unhandled)
 def make_packets(file_name, seqnos=OO):
+
     file_name=file_name.decode().replace('\n', '')
+    file_name = enc_dec.encryptMain(file_name)
+
     # read file as string 
     with open(file_name, 'rb') as myfile:
         data = myfile.read()
@@ -277,27 +281,27 @@ if __name__ == "__main__":
 
 
 
-def dummy_make_packets(seqnos):
-    str_dummy = 'The Quick Brown Fox Jumped Over The Lazy Dog.'
-    str_len = len(str_dummy)
-    data_size = 10
-    stt_ind = 0
-    seqno = 0
+# def dummy_make_packets(seqnos):
+#     str_dummy = 'The Quick Brown Fox Jumped Over The Lazy Dog.'
+#     str_len = len(str_dummy)
+#     data_size = 10
+#     stt_ind = 0
+#     seqno = 0
 
-    packets = []
+#     packets = []
     
-    while stt_ind < str_len:
-        data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
-        packet = Packet(seqno, len(data)+HEADERSIZE, 0, False, False, data)
-        if stt_ind+data_size >= str_len:
-            packet.islast = True
-        packets.append(packet)
-        # packet.print()
-        # Packet.unpack(packet.pack()).print()
-        stt_ind += data_size
-        seqno = (seqno+1)%seqnos
+#     while stt_ind < str_len:
+#         data = str_dummy[stt_ind:min(stt_ind+data_size, str_len)]
+#         packet = Packet(seqno, len(data)+HEADERSIZE, 0, False, False, data)
+#         if stt_ind+data_size >= str_len:
+#             packet.islast = True
+#         packets.append(packet)
+#         # packet.print()
+#         # Packet.unpack(packet.pack()).print()
+#         stt_ind += data_size
+#         seqno = (seqno+1)%seqnos
 
-    return packets
+#     return packets
 
 #print(gethostbyname(gethostname()))
 

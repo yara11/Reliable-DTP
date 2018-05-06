@@ -19,6 +19,7 @@ def stop_and_wait(client_socket, server_ip, server_portno, file_name, window_siz
 
     # Create request and send to server
     request_pkt = Packet(1, len(file_name)+HEADERSIZE, 0, False, False, file_name)
+    request_pkt.calc_checksum()
     client_socket.sendto(request_pkt.pack(), (server_ip, server_portno))
     
     print('requested ', file_name, ' from ', (server_ip, server_portno))
@@ -141,6 +142,8 @@ def reassemble_file(file_name, list):
     for piece in list:
         fh.write(piece)
     fh.close()
+    file_name = enc_dec.decryptMain(file_name)
+    print('file ', file_name, ' received successfully')
 
 
 if __name__ == "__main__":
