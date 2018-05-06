@@ -3,6 +3,7 @@ import os
 import time
 import struct
 from socket import *
+import threading
 from multiprocessing import Process, Manager
 from timer import *
 import random
@@ -34,10 +35,8 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			# if not lose_packet(plp): # no ACK packet loss
 			# update client table
 			if rdtp_fn == selective_repeat:
-				# print("hi : ", request_msg.seqno)
-				# print(client_table[client_address])
-				client_list = client_table[client_address]
-				client_list.append(request_msg.seqno)
+				key = client_address + (request_msg.seqno, )
+				client_table[key] = True
 			else:
 				client_table[client_address] = request_msg.seqno
 			print('received ack ', request_msg.seqno, ' from ', client_address)
@@ -48,11 +47,6 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			file_name = request_msg.data
 			print('received request ', file_name, ' from ', client_address)
 			client_table[client_address] = None
-			# need a list in case of selective_repeat
-			if rdtp_fn == selective_repeat:
-				new_list_mgr = Manager().list()
-				client_table[client_address] = new_list_mgr
-				# print(client_table[client_address])
 			child = Process(target=rdtp_fn, args=(server_socket, window_size, seedvalue, plp, file_name, client_address, client_table))
 			child.start()
 
@@ -171,91 +165,51 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 	base_ind = 0
 	next_seq_num = 0
 
-	# maps seq number of packet to process that manages it
-	seqno_to_process = {}
+	# contains events for threads awaiting acks
+	ack_events = {}
 	acknowledged = {}
 
 	while base_ind < len(packets):
 		# if there is a space in window send packets and start its timer
 		if next_seq_num < min(len(packets), packets[base_ind].seqno + window_size):
-			pkt_process = Process(target=sr_packet_manager, args=(server_socket, client_address, packets[next_seq_num], plp))
-			seqno_to_process[next_seq_num] = pkt_process
+			
+			pkt_event = threading.Event()
+			ack_events[next_seq_num] = pkt_event
 			acknowledged[next_seq_num] = False
-			pkt_process.start()
+
+			# new thread to handle this packet, awaits on pkt_event
+			pkt_thread = threading.Thread(name='pkt '+str(next_seq_num)+' mgr',target=sr_packet_manager, 
+				args=(server_socket, client_address, packets[next_seq_num], plp, pkt_event, ))
+			pkt_thread.start()
+
 			next_seq_num += 1
 
-		# copy of acked packets list for this client
-		acked_pkts = client_table[client_address][:]
-		for pkt_seqno in acked_pkts:
-			# stop the process awaiting this ack
-			seqno_to_process[pkt_seqno].terminate()
-			acknowledged[pkt_seqno] = True
-			# remove from actual list
-			client_table[client_address].remove(pkt_seqno)
-		
+		# stop threads awaiting acked packets
+		for eventseqno in ack_events.keys():
+			client_table_key = client_address + (eventseqno, )
+			if client_table_key in client_table:
+				ack_events[eventseqno].set()
+				acknowledged[eventseqno] = True
+				del client_table[client_table_key]
+
+		# filter out set (non-waiting) events
+		# instead of using del ack_events[client_table_key] because it will cause sync issues
+		ack_events = {k: v for k, v in ack_events.items() if not v.isSet() }
+
 		# move window as much as necessary
 		while base_ind < len(acknowledged) and acknowledged[base_ind] == True:
 			base_ind += 1
 
 	del client_table[client_address]
 
-def sr_packet_manager(server_socket, client_address, sndpkt, plp):
-	if not lose_packet(plp):
-		server_socket.sendto(sndpkt.pack(), client_address)
-		print('packet ', sndpkt.seqno, ' sent to ', client_address)
-	packet_timer = timer(TIMEOUT)
-	
-	while True:
-		if packet_timer.timer_timeout():
-			if not lose_packet(plp):
-				server_socket.sendto(sndpkt.pack(), client_address)
-				print('packet ', sndpkt.seqno, ' resent to ', client_address)
-			packet_timer.start_timer()
-
-
-# # Selective Repeat Algorithm
-# def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
-# 	#to creat a timer for each packet
-# 	packet_timer = [timer(TIMEOUT) for i in range(1000)]
-# 	#make packets with the buffer size
-# 	packets = make_packets(file_name, list(range(0, 1000)))
-# 	base = 0
-# 	next_seq_num = 0
-
-# 	while base < len (packets):
-# 		# if there is a space in window send packets and start its timer
-# 		if next_seq_num < packets[base].seqno + window_size:
-# 			server_socket.sendto(packets[next_seq_num].pack(), client_address)
-# 			packet_timer[next_seq_num].start_timer()
-# 			next_seq_num+=1
-# 		# if ack recived within the window
-# 		if  (packets[base].seqno <= client_table[client_address]) and (client_table[client_address]< packets[next_seq_num].seqno) :
-# 			# if the base recieved an ack and it is not already acked
-# 			if (client_table[client_address] == packets[base].seqno) and not (packets[base].is_ACK()):
-# 				print('packet ', packets[base].seqno, ' received by ', client_address)
-# 				base = client_table[client_address] + 1
-# 			# if base packet is already acked then increament base
-# 			elif packets[base].is_ACK():
-# 				base = +1
-# 			# if it is any other packet print it and mark it as acked
-# 			else :
-# 				# ask yara about this -> packets[client_table[client_address]].seqno i think something wrong or not
-# 				#client_table[client_address] and seq # are the same here ??
-# 				print('packet ', packets[client_table[client_address]].seqno, ' received by ', client_address)
-# 				#if ACk recieved for a packet between base and next_seq_num mark it as acked
-# 				if not (packets[client_table[client_address]].is_ACK()):
-# 					packets[client_table[client_address]].isACK = True
-# 		# loop from base to next sequance number and check if any packet timed out ask yara about this 'is it logical ?'
-# 		# is it nragative one
-# 		for i in range(base,next_seq_num-1):
-# 			# if time out of any packet resend this packet
-# 			print("i value ------>%d",i)
-# 			#if (packet_timer[i].timer_timeout) and not (packets[client_table[client_address]].is_ACK()):
-# 			if (packet_timer[i].timer_timeout):
-# 				print("---------------->i am here and i am not supposed to be here")
-# 				server_socket.sendto(packets[i].pack(), client_address)
-# 				packet_timer[i].start_timer()
-# 	del client_table[client_address]
+def sr_packet_manager(server_socket, client_address, sndpkt, plp, event):
+	while not event.isSet():
+		if not lose_packet(plp):
+			server_socket.sendto(sndpkt.pack(), client_address)
+			print('packet ', sndpkt.seqno, ' sent to ', client_address)
+		print(client_address, ' lost packet ', sndpkt.seqno)
+		event_is_set = event.wait(TIMEOUT)
+	print('packet ', sndpkt.seqno, ' received by ', client_address)
 
 
 # (Packet loss simulation)
