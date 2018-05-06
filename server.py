@@ -36,7 +36,8 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
 			if rdtp_fn == selective_repeat:
 				# print("hi : ", request_msg.seqno)
 				# print(client_table[client_address])
-				client_table[client_address].append(request_msg.seqno)
+				client_list = client_table[client_address]
+				client_list.append(request_msg.seqno)
 			else:
 				client_table[client_address] = request_msg.seqno
 			print('received ack ', request_msg.seqno, ' from ', client_address)
@@ -166,7 +167,6 @@ def go_back_n (server_socket, window_size, seedvalue, plp, file_name, client_add
 
 
 def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, client_address, client_table):
-
 	packets = make_packets(file_name, list(range(0, 1000)))
 	base_ind = 0
 	next_seq_num = 0
@@ -194,7 +194,7 @@ def selective_repeat (server_socket, window_size, seedvalue, plp, file_name, cli
 			client_table[client_address].remove(pkt_seqno)
 		
 		# move window as much as necessary
-		while base_ind < len(packets) and acknowledged[base_ind] == True:
+		while base_ind < len(acknowledged) and acknowledged[base_ind] == True:
 			base_ind += 1
 
 	del client_table[client_address]
