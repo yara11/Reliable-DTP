@@ -158,14 +158,23 @@ if __name__ == "__main__":
         filehandler.close()
         protocol_name = sys.argv[1]
         if protocol_name == 'stop-and-wait':
+        	stt = time.time()
             client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
                 client_args[3], int(client_args[4]), stop_and_wait)
+            end = time.time()
+            print(protocol_name, ' : ', end-stt, 'secs')
         elif protocol_name == 'go-back-n':
+        	stt = time.time()
             client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
                 client_args[3], int(client_args[4]), go_back_n)
+            end = time.time()
+            print(protocol_name, ' : ', end-stt, 'secs')
         elif protocol_name == 'selective-repeat':
+        	stt = time.time()
             client_init(client_args[0], int(client_args[1]), int(client_args[2]), 
                 client_args[3], int(client_args[4]), selective_repeat)
+            end = time.time()
+            print(protocol_name, ' : ', end-stt, 'secs')
         else:
             print('unknown protocol: ', sys.argv[1])
 
