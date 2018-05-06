@@ -7,7 +7,7 @@ import threading
 from multiprocessing import Process, Manager
 from timer import *
 import random
-# import enc_dec
+import enc_dec
 
 BUFFSIZE = 512
 HEADERSIZE = 10
@@ -226,9 +226,12 @@ def lose_packet(plp):
 # reads file and returns list of (encoded) datagram packets
 # max seq no is seqnos-1 (infinity by default, 2 for stop-and-wait, otherwise unhandled)
 def make_packets(file_name, seqnos=OO):
-
+    print("-----------> %s",file_name)
     file_name=file_name.decode().replace('\n', '')
-    # file_name = enc_dec.encryptMain(file_name)
+    #file_name = enc_dec.encryptMain(file_name)
+    enc_dec.encryptMain(file_name)
+    file_name ="(encrypted)"+ file_name
+    print("-----------> %s",file_name)
 
     # read file as string 
     with open(file_name, 'rb') as myfile:

@@ -11,7 +11,7 @@ key = ''
 def encrypt(key, filename):
 	# reading chunks from the file
 	chunksize = 64*1024
-	outputFile = "(encrypted)"+filename
+	outputFile =   "(encrypted)"+filename
 	filesize = str(os.path.getsize(filename)).zfill(16)
 	#iv used to randomize and produce distinct ciphertext
 	IV = Random.new().read(16)
@@ -76,20 +76,20 @@ def decryptMain(filename):
 	key = gen_Key()
 	decrypt(getKey(key), filename)
 
-def Main():
-	choice = input("Would you like to (E)ncrypt or (D)ecrypt?: ")
-	global key
-	key = gen_Key()
-	if choice == 'E':
-		filename = input("File to encrypt: ")
-		encrypt(getKey(key), filename)
-		print("Done.")
-	elif choice == 'D':
-		filename = input("File to decrypt: ")
-		decrypt(getKey(key), filename)
-		print("Done.")
-	else:
-		print("No Option selected, closing...")
+#def Main():
+#	choice = input("Would you like to (E)ncrypt or (D)ecrypt?: ")
+#	global key
+#	key = gen_Key()
+#	if choice == 'E':
+#		filename = input("File to encrypt: ")
+#		encrypt(getKey(key), filename)
+#		print("Done.")
+#	elif choice == 'D':
+#		filename = input("File to decrypt: ")
+#		decrypt(getKey(key), filename)
+#		print("Done.")
+#	else:
+#		print("No Option selected, closing...")
 
 if __name__ == '__main__':
 	Main()
