@@ -2,6 +2,7 @@ from rdtp import Packet
 from socket import *
 import time, sys
 from multiprocessing import Process
+# import enc_dec
 
 BUFFSIZE = 512
 HEADERSIZE = 10
@@ -142,7 +143,7 @@ def reassemble_file(file_name, list):
     for piece in list:
         fh.write(piece)
     fh.close()
-    file_name = enc_dec.decryptMain(file_name)
+    # file_name = enc_dec.decryptMain(file_name)
     print('file ', file_name, ' received successfully')
 
 

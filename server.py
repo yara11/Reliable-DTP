@@ -7,7 +7,7 @@ import threading
 from multiprocessing import Process, Manager
 from timer import *
 import random
-import enc_dec
+# import enc_dec
 
 BUFFSIZE = 512
 HEADERSIZE = 10
@@ -32,9 +32,9 @@ def server_listener(server_portno, window_size, seedvalue, plp, rdtp_fn):
         request_msg, client_address = server_socket.recvfrom(BUFFSIZE)
         request_msg = Packet.unpack(request_msg)
 
-        if request_msg.is_corrupted():
-            print('received corrupted message from ', client_address)
-            continue
+        # if request_msg.is_corrupted():
+        #     print('received corrupted message from ', client_address)
+        #     continue
 
         if request_msg.is_ACK(): # existing client ACK
             # if not lose_packet(plp): # no ACK packet loss
@@ -228,7 +228,7 @@ def lose_packet(plp):
 def make_packets(file_name, seqnos=OO):
 
     file_name=file_name.decode().replace('\n', '')
-    file_name = enc_dec.encryptMain(file_name)
+    # file_name = enc_dec.encryptMain(file_name)
 
     # read file as string 
     with open(file_name, 'rb') as myfile:
@@ -246,6 +246,7 @@ def make_packets(file_name, seqnos=OO):
             pkt_data = data[stt_ind:min(stt_ind+max_len, data_len)]
             # TODO: checksum
             packet = Packet(seqno, len(pkt_data)+HEADERSIZE, 0, False, False, pkt_data)
+            packet.calc_checksum()
             # last packet has is_last set
             if stt_ind+max_len >= data_len:
                 packet.islast = True
